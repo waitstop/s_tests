@@ -1,47 +1,102 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
+    import type {Currencies, State} from './app.d.ts'
+    import debounce from "./utils/debounce";
+    import exchangeCurrency from "./utils/exchangeCurrency";
+
+    let currencies: Currencies[] = ['USD', 'EUR', 'GBP', 'JPY', 'RUB']
+
+    let state: State[] = [
+        {
+            currency: 'USD',
+            amount: 0
+        },
+        {
+            currency: 'RUB',
+            amount: 0
+        }
+    ]
+
+    async function updateCurrency(event: Event, index: number) {
+        const target = event.target as HTMLSelectElement;
+        state[index] = {
+            ...state[index],
+            currency: target.value as Currencies,
+        }
+        const newAmount = await exchangeCurrency(
+            state[index].currency,
+            state[index].amount,
+            state[index === 0 ? 1:0].currency
+        )
+        state[index === 0 ? 1 : 0] = {
+            ...state[index === 0 ? 1 : 0],
+            amount: newAmount
+        }
+    }
+
+    function updateAmount(event: Event, index: number) {
+        const target = event.target as HTMLInputElement;
+        state[index] = {
+            ...state[index],
+            amount: parseFloat(target.value)
+        }
+        debounce(async () => {
+            const newAmount = await exchangeCurrency(
+                state[index].currency,
+                state[index].amount,
+                state[index === 0 ? 1:0].currency
+            )
+            state[index === 0 ? 1 : 0] = {
+                ...state[index === 0 ? 1 : 0],
+                amount: newAmount
+            }
+        })
+    }
+
 </script>
 
 <main>
-  <div>
-    <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
+    <h1>Конвертер валют 💱</h1>
 
-  <div class="card">
-    <Counter />
-  </div>
+    <div class="input-wrapper">
+        <input bind:value={state[0].amount} on:input={(e)=> updateAmount(e, 0)} type="number"/>
+        <select bind:value={state[0].currency} on:change={(e)=> updateCurrency(e, 0)}>
+            {#each currencies as currency}
+                <option disabled={state[1].currency === currency}
+                        value="{currency}">
+                    {currency}
+                </option>
+            {/each}
+        </select>
+    </div>
 
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
+    <div class="input-wrapper">
+        <input bind:value={state[1].amount} on:input={(e)=> updateAmount(e, 1)} type="number"/>
+        <select bind:value={state[1].currency} on:change={(e)=> updateCurrency(e, 1)}>
+            {#each currencies as currency}
+                <option disabled={state[0].currency === currency}
+                        value="{currency}">
+                    {currency}
+                </option>
+            {/each}
+        </select>
+    </div>
 
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
 </main>
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
-  }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
-  }
+    .input-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        gap: 1rem;
+    }
+
+    .input-wrapper input, .input-wrapper select {
+        padding: 1rem;
+    }
+
+    .input-wrapper input {
+        width: 100%;
+    }
 </style>
